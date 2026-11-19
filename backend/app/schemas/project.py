@@ -1,4 +1,5 @@
 
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -13,7 +14,9 @@ class ProjectCreate(BaseModel):
         max_length=200,
     )
 
+    serial_number: str | None = None
     description: str | None = None
+    status: str | None = Field(default="pending", max_length=30)
 
     input_unit: str = Field(
         default="in",
@@ -37,6 +40,7 @@ class ProjectCreate(BaseModel):
 class ProjectResponse(BaseModel):
     id: UUID
     customer_id: UUID
+    serial_number: str | None = None
     name: str
     description: str | None
     status: str
@@ -44,5 +48,11 @@ class ProjectResponse(BaseModel):
     output_unit: str
     default_tolerance_mm: Decimal
     default_apply_tolerance: bool
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(pending|active|completed|inactive)$")

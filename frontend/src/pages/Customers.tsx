@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import type { Language } from '../components/Sidebar'
+import { matchesProjectSerial } from '../utils/projectSerials'
 import './Customers.css'
 
 export type Customer = {
@@ -12,9 +13,10 @@ export type Customer = {
   is_active: boolean
 }
 
-type Project = {
+export type Project = {
   id: string
   customer_id: string
+  serial_number?: string
   name: string
   description: string | null
   status: string
@@ -22,6 +24,7 @@ type Project = {
   output_unit: string
   default_tolerance_mm: number
   default_apply_tolerance: boolean
+  created_at?: string
 }
 
 type Props = {
@@ -29,6 +32,7 @@ type Props = {
   selectedCustomer: Customer | null
   onSelectCustomer: (customer: Customer | null) => void
   onNewOrder: (customer: Customer) => void
+  onUpdateOrder: (customer: Customer, project: Project) => void
 }
 
 function Customers({
@@ -36,6 +40,7 @@ function Customers({
   selectedCustomer,
   onSelectCustomer,
   onNewOrder,
+  onUpdateOrder,
 }: Props) {
   const isTamil = language === 'ta'
 
@@ -72,66 +77,61 @@ function Customers({
           fetch('/api/projects/'),
         ])
 
-      if (!customerResponse.ok || !projectResponse.ok) {
-        throw new Error('Unable to load customer information.')
+      if (customerResponse.ok) {
+        const customerData: Customer[] = await customerResponse.json()
+        const projectData: Project[] = projectResponse.ok
+          ? await projectResponse.json()
+          : []
+        setCustomers(customerData)
+        setProjects(projectData)
+        try {
+          localStorage.setItem('ls-interiors-customers', JSON.stringify(customerData))
+        } catch {}
+        return
       }
-
-      const customerData: Customer[] =
-        await customerResponse.json()
-
-      const projectData: Project[] =
-        await projectResponse.json()
-
-      setCustomers(customerData)
-      setProjects(projectData)
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Something went wrong.',
-      )
+    } catch {
+      // Backend not reachable - seamless fallback to local storage
     } finally {
       setLoading(false)
     }
+
+    // Client-side fallback for static deployment / offline mode
+    try {
+      const localCusts = localStorage.getItem('ls-interiors-customers')
+      if (localCusts) {
+        setCustomers(JSON.parse(localCusts))
+        return
+      }
+      const rawOrders = localStorage.getItem('ls-interiors-saved-orders')
+      if (rawOrders) {
+        const orders = JSON.parse(rawOrders)
+        const extracted: Customer[] = []
+        orders.forEach((o: any, idx: number) => {
+          if (o.customerName && !extracted.some((c) => c.name.toLowerCase() === o.customerName.toLowerCase())) {
+            extracted.push({
+              id: o.customerId || `cust-${idx + 1}`,
+              name: o.customerName,
+              phone: o.customerPhone || '',
+              email: '',
+              address: '',
+              is_active: true,
+            })
+          }
+        })
+        if (extracted.length > 0) {
+          setCustomers(extracted)
+          localStorage.setItem('ls-interiors-customers', JSON.stringify(extracted))
+        }
+      }
+    } catch {}
   }
 
   useEffect(() => {
     let isActive = true
 
-    Promise.all([
-      fetch('/api/customers/'),
-      fetch('/api/projects/'),
-    ])
-      .then(async ([customerResponse, projectResponse]) => {
-        if (!customerResponse.ok || !projectResponse.ok) {
-          throw new Error('Unable to load customer information.')
-        }
-
-        const customerData: Customer[] =
-          await customerResponse.json()
-
-        const projectData: Project[] =
-          await projectResponse.json()
-
-        if (isActive) {
-          setCustomers(customerData)
-          setProjects(projectData)
-        }
-      })
-      .catch((err: unknown) => {
-        if (isActive) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : 'Something went wrong.',
-          )
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setLoading(false)
-        }
-      })
+    loadData().then(() => {
+      if (!isActive) return
+    })
 
     return () => {
       isActive = false
@@ -210,25 +210,87 @@ function Customers({
 
       setShowForm(false)
       setEditingCustomer(null)
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to save customer.',
-      )
+    } catch {
+      // Local fallback for offline/GitHub Pages deployment
+      const localCustomer: Customer = {
+        id: editingCustomer ? editingCustomer.id : `cust-${Date.now()}`,
+        name: payload.name,
+        phone: payload.phone,
+        email: payload.email,
+        address: payload.address,
+        is_active: true,
+      }
+      setCustomers((prev) => {
+        const next = editingCustomer
+          ? prev.map((c) => (c.id === editingCustomer.id ? localCustomer : c))
+          : [localCustomer, ...prev]
+        try {
+          localStorage.setItem('ls-interiors-customers', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+      onSelectCustomer(localCustomer)
+      setShowForm(false)
+      setEditingCustomer(null)
     } finally {
       setSaving(false)
     }
   }
 
-  const filteredCustomers = customers.filter((customer) => {
-    const query = search.toLowerCase()
+  async function handleDeleteCustomer(customer: Customer) {
+    const confirmed = window.confirm(
+      isTamil
+        ? `"${customer.name}" வாடிக்கையாளரை நிச்சயமாக நீக்க விரும்புகிறீர்களா?`
+        : `Are you sure you want to delete customer "${customer.name}"?`
+    )
 
-    return (
+    if (!confirmed) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/customers/${customer.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Unable to delete customer.')
+      }
+
+      onSelectCustomer(null)
+      await loadData()
+    } catch {
+      setCustomers((prev) => {
+        const next = prev.filter((c) => c.id !== customer.id)
+        try {
+          localStorage.setItem('ls-interiors-customers', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+      onSelectCustomer(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredCustomers = customers.filter((customer) => {
+    const query = search.trim().toLowerCase()
+    if (!query) return true
+
+    // Match customer name, phone, email
+    const matchCustomer =
       customer.name.toLowerCase().includes(query) ||
       (customer.phone ?? '').toLowerCase().includes(query) ||
       (customer.email ?? '').toLowerCase().includes(query)
-    )
+
+    if (matchCustomer) return true
+
+    // Match any project of this customer by project name or project ID (e.g. proj-1)
+    return projects.some((project) => {
+      if (project.customer_id !== customer.id) return false
+      const matchProjName = project.name.toLowerCase().includes(query)
+      const matchSerial = matchesProjectSerial(project.serial_number, query)
+      return matchProjName || matchSerial
+    })
   })
 
   const customerProjects = selectedCustomer
@@ -399,8 +461,8 @@ function Customers({
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t(
-              'Search by name, phone or email...',
-              'பெயர், தொலைபேசி அல்லது மின்னஞ்சல் மூலம் தேடவும்...',
+              'Search by name, phone, email or ID (e.g. proj-1)...',
+              'பெயர், தொலைபேசி, மின்னஞ்சல் அல்லது ID (எ.கா. proj-1) மூலம் தேடவும்...',
             )}
           />
 
@@ -503,12 +565,23 @@ function Customers({
 
                 </div>
 
-                <button
-                  className="customer-secondary-button"
-                  onClick={() => openEditForm(selectedCustomer)}
-                >
-                  {t('Edit Details', 'விவரங்களைத் திருத்து')}
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="customer-secondary-button"
+                    onClick={() => openEditForm(selectedCustomer)}
+                  >
+                    {t('Edit Details', 'விவரங்களைத் திருத்து')}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="customer-danger-button"
+                    onClick={() => handleDeleteCustomer(selectedCustomer)}
+                  >
+                    {t('Delete Customer', 'வாடிக்கையாளரை நீக்கு')}
+                  </button>
+                </div>
 
               </div>
 
@@ -582,7 +655,24 @@ function Customers({
                       >
 
                         <div>
-                          <strong>{project.name}</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                            {project.serial_number && (
+                              <span
+                                style={{
+                                  backgroundColor: '#2563eb',
+                                  color: '#ffffff',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  fontFamily: 'monospace',
+                                }}
+                              >
+                                {project.serial_number}
+                              </span>
+                            )}
+                            <strong>{project.name}</strong>
+                          </div>
 
                           <span>
                             {t('Input', 'உள்ளீடு')}:{' '}
@@ -593,11 +683,22 @@ function Customers({
                           </span>
                         </div>
 
-                        <span
-                          className={`customer-status ${project.status}`}
-                        >
-                          {project.status}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            className={`customer-status ${project.status}`}
+                          >
+                            {project.status}
+                          </span>
+
+                          <button
+                            type="button"
+                            className="customer-secondary-button"
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            onClick={() => onUpdateOrder(selectedCustomer, project)}
+                          >
+                            {t('Update Order', 'ஆர்டரைப் புதுப்பிக்கவும்')}
+                          </button>
+                        </div>
 
                       </div>
                     ))}

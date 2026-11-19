@@ -28,15 +28,40 @@ def create_customer(
     db: Session = Depends(get_db),
     shop: Shop = Depends(get_current_shop),
 ):
+    cleaned_name = customer_data.name.strip()
+    cleaned_phone = customer_data.phone.strip() if customer_data.phone else None
+    cleaned_email = customer_data.email.lower().strip() if customer_data.email else None
+
+    # Deduplication check: Search by matching phone (if provided) or exact case-insensitive name
+    existing_query = select(Customer).where(Customer.shop_id == shop.id)
+    if cleaned_phone:
+        existing_query = existing_query.where(
+            (Customer.phone == cleaned_phone) |
+            (Customer.name.ilike(cleaned_name))
+        )
+    else:
+        existing_query = existing_query.where(Customer.name.ilike(cleaned_name))
+
+    existing_customer = db.scalar(existing_query)
+    if existing_customer:
+        # Reuse and reactivate existing customer without creating duplicates
+        existing_customer.name = cleaned_name
+        if cleaned_phone:
+            existing_customer.phone = cleaned_phone
+        if cleaned_email:
+            existing_customer.email = cleaned_email
+        if customer_data.address:
+            existing_customer.address = customer_data.address
+        existing_customer.is_active = True
+        db.commit()
+        db.refresh(existing_customer)
+        return existing_customer
+
     customer = Customer(
         shop_id=shop.id,
-        name=customer_data.name.strip(),
-        phone=customer_data.phone,
-        email=(
-            customer_data.email.lower()
-            if customer_data.email
-            else None
-        ),
+        name=cleaned_name,
+        phone=cleaned_phone,
+        email=cleaned_email,
         address=customer_data.address,
     )
 

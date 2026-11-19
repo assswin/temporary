@@ -11,7 +11,7 @@ def setup_backend_path():
     sys.path.insert(0, str(backend_path))
     from app.db.base import Base
     from app.db.session import engine, database_url
-    import app.models.shop  # noqa: F401
+    import app.models  # noqa: F401
 
     return Base, engine, database_url
 

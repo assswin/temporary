@@ -265,10 +265,44 @@
 }
 
 .tolerance-settings label input[type="number"] {
-  width: 110px;
-  padding: 9px;
+  width: 70px;
+  padding: 8px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.tolerance-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tolerance-step-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  font-weight: 700;
+  font-size: 16px;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.tolerance-step-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.tolerance-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .tolerance-settings .tolerance-checkbox {
@@ -336,10 +370,44 @@
 }
 
 .tolerance-settings label input[type="number"] {
-  width: 110px;
-  padding: 9px;
+  width: 70px;
+  padding: 8px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.tolerance-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tolerance-step-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  font-weight: 700;
+  font-size: 16px;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.tolerance-step-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.tolerance-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .tolerance-settings .tolerance-checkbox {

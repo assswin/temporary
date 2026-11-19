@@ -61,6 +61,22 @@
   background: #e2e8f0;
 }
 
+.customer-danger-button {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 17px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.customer-danger-button:hover {
+  background: #fca5a5;
+  color: #b91c1c;
+}
+
 .customer-close-button {
   padding: 7px 10px;
   background: #f1f4f8;

@@ -28,6 +28,10 @@ class Project(Base):
             "shop_id",
             name="uq_projects_id_shop_id",
         ),
+        UniqueConstraint(
+            "serial_number",
+            name="uq_projects_serial_number",
+        ),
         ForeignKeyConstraint(
             ["customer_id", "shop_id"],
             ["customers.id", "customers.shop_id"],
@@ -39,6 +43,13 @@ class Project(Base):
         Uuid(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+
+    serial_number: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        unique=True,
+        index=True,
     )
 
     shop_id: Mapped[uuid.UUID] = mapped_column(

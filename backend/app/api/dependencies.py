@@ -1,5 +1,4 @@
-
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,9 +17,13 @@ def get_current_shop(
     shop = db.scalar(statement)
 
     if shop is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="LS Interiors shop was not found or is inactive.",
+        shop = Shop(
+            name="LS Interiors",
+            slug="ls-interiors",
+            is_active=True,
         )
+        db.add(shop)
+        db.commit()
+        db.refresh(shop)
 
     return shop

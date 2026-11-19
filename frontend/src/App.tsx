@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import Customers, {
   type Customer,
+  type Project,
 } from './pages/Customers'
 
 import Sidebar, {
@@ -11,6 +12,9 @@ import Sidebar, {
 } from './components/Sidebar'
 
 import Measurements from './pages/Measurements'
+import Settings from './pages/Settings'
+import Dashboard from './pages/Dashboard'
+import Drawings from './pages/Drawings'
 
 import './App.css'
 
@@ -23,6 +27,9 @@ function App() {
   const [selectedCustomer, setSelectedCustomer] =
     useState<Customer | null>(null)
 
+  const [selectedProjectId, setSelectedProjectId] =
+    useState<string | null>(null)
+
   const pageTitles: Record<PageKey, { en: string; ta: string }> = {
     dashboard: { en: 'Dashboard', ta: 'முகப்பு' },
     customers: { en: 'Customers', ta: 'வாடிக்கையாளர்கள்' },
@@ -31,7 +38,6 @@ function App() {
       ta: 'அளவீடுகள் மற்றும் ஆர்டர்கள்',
     },
     drawings: { en: 'Drawings & PDFs', ta: 'வரைபடங்கள் மற்றும் PDF' },
-    workshop: { en: 'Workshop', ta: 'பட்டறை' },
     settings: { en: 'Settings', ta: 'அமைப்புகள்' },
   }
 
@@ -39,6 +45,13 @@ function App() {
 
   function handleNewOrder(customer: Customer) {
     setSelectedCustomer(customer)
+    setSelectedProjectId(null)
+    setActivePage('measurementsOrders')
+  }
+
+  function handleUpdateOrder(customer: Customer, project: Project) {
+    setSelectedCustomer(customer)
+    setSelectedProjectId(project.id)
     setActivePage('measurementsOrders')
   }
 
@@ -69,20 +82,45 @@ function App() {
         </header>
 
         {activePage === 'dashboard' ? (
-          <section className="dashboard-placeholder">
-            Dashboard
-          </section>
+          <Dashboard
+            language={language}
+            onOpenProject={(customer, project) => {
+              setSelectedCustomer(customer)
+              setSelectedProjectId(project.id)
+              setActivePage('measurementsOrders')
+            }}
+            onNewOrder={() => {
+              setSelectedCustomer(null)
+              setSelectedProjectId(null)
+              setActivePage('measurementsOrders')
+            }}
+          />
         ) : activePage === 'customers' ? (
           <Customers
             language={language}
             selectedCustomer={selectedCustomer}
             onSelectCustomer={setSelectedCustomer}
             onNewOrder={handleNewOrder}
+            onUpdateOrder={handleUpdateOrder}
           />
         ) : activePage === 'measurementsOrders' ? (
           <Measurements
+            key={selectedProjectId || (selectedCustomer ? `customer-${selectedCustomer.id}` : 'new-order')}
             selectedCustomer={selectedCustomer}
+            initialProjectId={selectedProjectId}
+            language={language}
           />
+        ) : activePage === 'drawings' ? (
+          <Drawings
+            language={language}
+            initialProjectId={selectedProjectId}
+            onOpenMeasurements={(projId) => {
+              if (projId) setSelectedProjectId(projId)
+              setActivePage('measurementsOrders')
+            }}
+          />
+        ) : activePage === 'settings' ? (
+          <Settings language={language} />
         ) : (
           <section className="dashboard-placeholder">
             {currentTitle.en}

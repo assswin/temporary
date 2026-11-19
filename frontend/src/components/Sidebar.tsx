@@ -8,7 +8,6 @@ export type PageKey =
   | 'customers'
   | 'measurementsOrders'
   | 'drawings'
-  | 'workshop'
   | 'settings'
 
 interface SidebarProps {
@@ -53,12 +52,6 @@ function Sidebar({
       en: 'Drawings & PDFs',
       ta: 'வரைபடங்கள் மற்றும் PDF',
       icon: '▧',
-    },
-    {
-      key: 'workshop',
-      en: 'Workshop',
-      ta: 'பட்டறை',
-      icon: '⚒',
     },
     {
       key: 'settings',

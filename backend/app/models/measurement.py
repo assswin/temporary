@@ -87,6 +87,12 @@ class Measurement(Base):
         nullable=True,
     )
 
+    variant_letter: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+        default="",
+    )
+
     glass_type: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
@@ -118,6 +124,12 @@ class Measurement(Base):
 
     identification_color: Mapped[str] = mapped_column(
         String(20),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="pending",
         nullable=False,
     )
 

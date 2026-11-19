@@ -16,3 +16,14 @@ dist/
 
 # Development
 .pytest_cache/
+
+# Databases
+*.db
+*.sqlite3
+
+# Local Reference & Temp Files
+old project/
+scratch/
+*.pdf
+generate_audit_pdf.py
+
